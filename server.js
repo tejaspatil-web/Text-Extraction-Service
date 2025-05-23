@@ -3,8 +3,18 @@ const multer = require('multer');
 const Tesseract = require('tesseract.js');
 const path = require('path');
 const fs = require('fs');
+const cors = require('cors');
 
 const app = express();
+
+app.use(cors())
+
+app.use(cors({
+    origin: ['https://chatfusionx.web.app','http://localhost:4200'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }));
+
 const port = 3000;
 
 const upload = multer({ dest: 'uploads/' });
