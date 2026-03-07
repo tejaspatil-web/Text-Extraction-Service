@@ -5,47 +5,52 @@ const fs = require("fs");
 const path = require("path");
 
 const config = {
-  lang: "eng",
-  oem: 1,
-  psm: 3,
-  tessdataDir: path.join(__dirname, "tessdata")
+    lang: "eng",
+    oem: 1,
+    psm: 3,
+    tessdataDir: path.join(__dirname, "tessdata")
 };
 
 const uploadDir = path.join(__dirname, "uploads");
 
 // Create uploads folder once
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+    fs.mkdirSync(uploadDir, { recursive: true });
 }
 
 parentPort.on("message", async (data) => {
-  const tempFile = path.join(uploadDir, `${Date.now()}.png`);
+    console.log("Worker received message");
+    const tempFile = path.join(uploadDir, `${Date.now()}.png`);
 
-  try {
-    await sharp(data.buffer)
-      .resize({ width: 1200 })
-      .grayscale()
-      .png()
-      .toFile(tempFile);
+    try {
+        console.log("Starting sharp processing");
+        await sharp(data.buffer)
+            .resize({ width: 1200 })
+            .grayscale()
+            .png()
+            .toFile(tempFile);
+        console.log("Sharp finished");
 
-    const text = await tesseract.recognize(tempFile, config);
+        console.log("Starting OCR");
+        const text = await tesseract.recognize(tempFile, config);
+        console.log("OCR finished");
 
-    if (fs.existsSync(tempFile)) {
-      fs.unlinkSync(tempFile);
+        if (fs.existsSync(tempFile)) {
+            fs.unlinkSync(tempFile);
+        }
+
+        parentPort.postMessage({
+            success: true,
+            text
+        });
+    } catch (error) {
+        if (fs.existsSync(tempFile)) {
+            fs.unlinkSync(tempFile);
+        }
+
+        parentPort.postMessage({
+            success: false,
+            error: error.message
+        });
     }
-
-    parentPort.postMessage({
-      success: true,
-      text
-    });
-  } catch (error) {
-    if (fs.existsSync(tempFile)) {
-      fs.unlinkSync(tempFile);
-    }
-
-    parentPort.postMessage({
-      success: false,
-      error: error.message
-    });
-  }
 });
