@@ -7,8 +7,7 @@ const path = require("path");
 const config = {
     lang: "eng",
     oem: 1,
-    psm: 3,
-    tessdataDir: path.join(__dirname, "tessdata")
+    psm: 3
 };
 
 const uploadDir = path.join(__dirname, "uploads");
