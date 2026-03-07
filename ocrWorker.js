@@ -12,15 +12,15 @@ const config = {
 };
 
 parentPort.on("message", async (data) => {
+    const uploadDir = path.join(__dirname, "uploads");
 
-  const tempFile = path.join(
-    __dirname,
-    "uploads",
-    `${Date.now()}.png`
-  );
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+  const tempFile = path.join(__dirname,"uploads",`${Date.now()}.png`);
 
   try {
-
     await sharp(data.buffer)
       .resize({ width: 1200 })
       .grayscale()
@@ -38,9 +38,7 @@ parentPort.on("message", async (data) => {
       success: true,
       text
     });
-
   } catch (error) {
-
     if (fs.existsSync(tempFile)) {
       fs.unlinkSync(tempFile);
     }
@@ -49,7 +47,5 @@ parentPort.on("message", async (data) => {
       success: false,
       error: error.message
     });
-
   }
-
 });
