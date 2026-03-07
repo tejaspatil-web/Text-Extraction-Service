@@ -11,14 +11,15 @@ const config = {
   tessdataDir: path.join(__dirname, "tessdata")
 };
 
+const uploadDir = path.join(__dirname, "uploads");
+
+// Create uploads folder once
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 parentPort.on("message", async (data) => {
-    const uploadDir = path.join(__dirname, "uploads");
-
-    if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
-  const tempFile = path.join(__dirname,"uploads",`${Date.now()}.png`);
+  const tempFile = path.join(uploadDir, `${Date.now()}.png`);
 
   try {
     await sharp(data.buffer)
@@ -27,12 +28,11 @@ parentPort.on("message", async (data) => {
       .png()
       .toFile(tempFile);
 
-    const text = await tesseract.recognize(
-      tempFile,
-      config
-    );
+    const text = await tesseract.recognize(tempFile, config);
 
-    fs.unlinkSync(tempFile);
+    if (fs.existsSync(tempFile)) {
+      fs.unlinkSync(tempFile);
+    }
 
     parentPort.postMessage({
       success: true,

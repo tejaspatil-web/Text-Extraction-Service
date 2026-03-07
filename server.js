@@ -32,7 +32,16 @@ function runOCR(buffer) {
       else reject(result.error);
     });
 
-    worker.on("error", reject);
+    worker.on("error", (err) => {
+      worker.terminate();
+      reject(err);
+    });
+
+    worker.on("exit", (code) => {
+      if (code !== 0) {
+        reject(new Error(`Worker stopped with exit code ${code}`));
+      }
+    });
 
   });
 }
