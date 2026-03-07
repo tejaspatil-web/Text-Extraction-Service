@@ -31,6 +31,8 @@ parentPort.on("message", async (data) => {
         console.log("Sharp finished");
 
         console.log("Starting OCR");
+        const { execSync } = require("child_process");
+        console.log(execSync("tesseract --list-langs").toString());
         const text = await tesseract.recognize(tempFile, config);
         console.log("OCR finished");
 
