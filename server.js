@@ -1,46 +1,70 @@
-const express = require('express');
-const multer = require('multer');
-const Tesseract = require('tesseract.js');
-const path = require('path');
-const fs = require('fs');
-const cors = require('cors');
+const express = require("express");
+const multer = require("multer");
+const { Worker } = require("worker_threads");
+const path = require("path");
+const cors = require("cors");
 
 const app = express();
-
-app.use(cors())
+const port = process.env.PORT || 3000;
 
 app.use(cors({
-    origin: ['https://chatfusionx.web.app','http://localhost:4200'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-  }));
+  origin: [
+    "https://chatfusionx.web.app",
+    "http://localhost:4200"
+  ]
+}));
 
-const port = 3000;
+const upload = multer({
+  storage: multer.memoryStorage()
+});
 
-const upload = multer({ dest: 'uploads/' });
+function runOCR(buffer) {
+  return new Promise((resolve, reject) => {
 
-app.post('/extract-text', upload.single('image'), async (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No image uploaded' });
-    }
+    const worker = new Worker(path.join(__dirname, "ocrWorker.js"));
 
-    try {
-        const imagePath = path.resolve(req.file.path);
+    worker.postMessage({ buffer });
 
-        const result = await Tesseract.recognize(
-            imagePath,
-            'eng',
-            { logger: m => console.log(m) }
-        );
+    worker.on("message", (result) => {
+      worker.terminate();
 
-        fs.unlinkSync(imagePath);
+      if (result.success) resolve(result.text);
+      else reject(result.error);
+    });
 
-        res.json({ text: result.data.text });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to extract text', details: error.message });
-    }
+    worker.on("error", reject);
+
+  });
+}
+
+app.post("/extract-text", upload.single("image"), async (req, res) => {
+
+  if (!req.file) {
+    return res.status(400).json({
+      error: "No image uploaded"
+    });
+  }
+
+  try {
+
+    const text = await runOCR(req.file.buffer);
+
+    res.json({
+      success: true,
+      text: text.trim()
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+      error: "OCR failed",
+      details: error
+    });
+
+  }
+
 });
 
 app.listen(port, () => {
-    console.log(`Server started at http://localhost:${port}`);
+  console.log(`OCR Server running on port ${port}`);
 });
