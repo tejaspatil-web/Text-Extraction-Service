@@ -18,63 +18,77 @@ const upload = multer({
     storage: multer.memoryStorage()
 });
 
-function runOCR(buffer) {
-    return new Promise((resolve, reject) => {
-        console.log("Creating worker");
-        const worker = new Worker(path.join(__dirname, "ocrWorker.js"));
+let isProcessing = false;
+const queue = [];
 
-        worker.postMessage({ buffer });
-
-        worker.on("message", (result) => {
-            console.log("Worker returned result");
-            worker.terminate();
-
-            if (result.success) resolve(result.text);
-            else reject(result.error);
-        });
-
-        worker.on("error", (err) => {
-            console.log("Worker error:", err);
-            worker.terminate();
-            reject(err);
-        });
-
-        worker.on("exit", (code) => {
-            if (code !== 0) {
-                reject(new Error(`Worker stopped with exit code ${code}`));
-            }
-        });
-
+async function processQueue() {
+  if (isProcessing || queue.length === 0) return;
+  isProcessing = true;
+  const job = queue.shift();
+  try {
+    console.log("Starting OCR job");
+    const text = await runOCR(job.buffer);
+    job.res.json({
+      success: true,
+      text: text.trim()
     });
+  } catch (error) {
+    console.log("OCR error:", error);
+    job.res.status(500).json({
+      error: "OCR failed",
+      details: error.message
+    });
+  }
+  isProcessing = false;
+  processQueue();
 }
 
-app.post("/extract-text", upload.single("image"), async (req, res) => {
-    console.log("Request received");
+function runOCR(buffer) {
+  return new Promise((resolve, reject) => {
+    console.log("Creating worker");
+    const worker = new Worker(
+      path.join(__dirname, "ocrWorker.js")
+    );
 
-    if (!req.file) {
-        return res.status(400).json({
-            error: "No image uploaded"
-        });
-    }
+    worker.postMessage({ buffer });
 
-    try {
-        console.log("Starting OCR worker");
-        const text = await runOCR(req.file.buffer);
+    worker.on("message", (result) => {
+      console.log("Worker finished OCR");
+      worker.terminate();
+      if (result.success) resolve(result.text);
+      else reject(result.error);
+    });
 
-        res.json({
-            success: true,
-            text: text.trim()
-        });
+    worker.on("error", (err) => {
+      console.log("Worker error:", err);
+      worker.terminate();
+      reject(err);
+    });
 
-    } catch (error) {
-        console.log("OCR error:", error);
-        res.status(500).json({
-            error: "OCR failed",
-            details: error
-        });
+    worker.on("exit", (code) => {
+      if (code !== 0) {
+        console.log(`Worker exited with code ${code}`);
+      }
+    });
+  });
+}
 
-    }
+app.post("/extract-text", upload.single("image"), (req, res) => {
+  console.log("Request received");
 
+  if (!req.file) {
+    return res.status(400).json({
+      error: "No image uploaded"
+    });
+  }
+
+  queue.push({
+    buffer: req.file.buffer,
+    res
+  });
+
+  console.log(`Queue length: ${queue.length}`);
+  processQueue();
 });
 
 app.listen(port, () => {
