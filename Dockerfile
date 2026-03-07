@@ -1,9 +1,4 @@
-FROM node:18
-
-# Install Tesseract OCR
-RUN apt-get update \
- && apt-get install -y tesseract-ocr tesseract-ocr-eng \
- && rm -rf /var/lib/apt/lists/*
+FROM node:20-slim
 
 WORKDIR /app
 
