@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import os from "os";
 import { fileURLToPath } from "url";
 import sharp from "sharp";
 import { createWorker, createScheduler } from "tesseract.js";
@@ -51,17 +50,19 @@ export async function initWorkers() {
 
 //Preprocess image
 async function preprocessImage(buffer) {
+  if (buffer.length < 500000) return buffer;
+
   // */ For now, skip preprocessing to save time. Can be enabled later if needed. */
-
-  // if (buffer.length < 500000) return buffer;
-
   // return sharp(buffer)
   //   .resize({ width: 600, withoutEnlargement: true })
   //   .grayscale()
   //   .normalize()
   //   .toBuffer();
 
-  return buffer;
+  return await sharp(buffer)
+  .resize({ width: 400 })
+  .grayscale()
+  .toBuffer();
 }
 
 //Main function
@@ -89,6 +90,10 @@ export async function* extractTextFromPages(files = []) {
           // Skip invalid/small files
           if (!buffer || buffer.length < 1000) {
             return { page: pageNumber, text: "" };
+          }
+
+          if (buffer.length > 3 * 1024 * 1024) {
+            throw new Error(`File too large (max 3MB), page ${pageNumber}`);
           }
 
           // Preprocess (resize, grayscale, normalize)
