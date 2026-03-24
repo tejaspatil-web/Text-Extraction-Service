@@ -61,59 +61,73 @@ async function preprocessImage(buffer) {
 }
 
 //Main function
-export async function* extractTextFromPages(base64Images = []) {
+export async function* extractTextFromPages(files = []) {
   if (!isInitialized) {
     throw new Error("OCR workers not initialized");
   }
 
-  if (!Array.isArray(base64Images) || base64Images.length === 0) {
+  if (!Array.isArray(files) || files.length === 0) {
     throw new Error("No images provided");
   }
 
   const allResults = [];
 
-  for (let i = 0; i < base64Images.length; i += BATCH_SIZE) {
-    const batch = base64Images.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < files.length; i += BATCH_SIZE) {
+    const batch = files.slice(i, i + BATCH_SIZE);
 
     const batchResults = await Promise.all(
-      batch.map(async (base64, index) => {
+      batch.map(async (file, index) => {
         const pageNumber = i + index + 1;
 
         try {
-          const buffer = Buffer.from(base64, "base64");
+          const buffer = file.buffer;
 
-          if (buffer.length < 1000) {
+          // Skip invalid/small files
+          if (!buffer || buffer.length < 1000) {
             return { page: pageNumber, text: "" };
           }
 
+          // Preprocess (resize, grayscale, normalize)
           const processedBuffer = await preprocessImage(buffer);
 
-          const result = await scheduler.addJob("recognize", processedBuffer, {
-            user_defined_dpi: "200"
-          });
+          // OCR job
+          const result = await scheduler.addJob(
+            "recognize",
+            processedBuffer,
+            {
+              user_defined_dpi: "200"
+            }
+          );
 
           return {
             page: pageNumber,
-            text: result.data.text.trim()
+            text: result.data.text?.trim() || ""
           };
 
         } catch (err) {
           console.error(`Error processing page ${pageNumber}:`, err);
-          return { page: pageNumber, text: "" };
+
+          return {
+            page: pageNumber,
+            text: "",
+            error: true
+          };
         }
       })
     );
 
     allResults.push(...batchResults);
 
+    //Yield batch progress
     yield {
       type: "batch",
       processed: allResults.length,
-      total: base64Images.length,
+      total: files.length,
       data: batchResults
     };
   }
 
+  //Final result
   yield {
     type: "final",
     pages: allResults,

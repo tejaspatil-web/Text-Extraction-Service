@@ -2,9 +2,14 @@ import { extractTextFromPages } from "../services/ocr.service.js";
 
 export async function extractText(req, res) {
   try {
-    const { images } = req.body;
+    const files = req.files;
 
-    const generator = extractTextFromPages(images);
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: "No images uploaded" });
+    }
+
+    // convert buffers → pass directly
+    const generator = extractTextFromPages(files);
 
     let finalResult;
 
