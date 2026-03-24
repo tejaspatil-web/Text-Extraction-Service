@@ -36,8 +36,8 @@ async function startServer() {
     await initWorkers();
     console.log("OCR initialized");
 
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
     });
 
   } catch (err) {

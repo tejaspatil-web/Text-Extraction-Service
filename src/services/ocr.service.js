@@ -37,8 +37,7 @@ export async function initWorkers() {
     });
 
     await worker.setParameters({
-      tessedit_pageseg_mode: 6,
-      tessedit_ocr_engine_mode: 0
+      tessedit_pageseg_mode: 6
     });
 
     scheduler.addWorker(worker);
