@@ -14,9 +14,9 @@ const __dirname = path.dirname(__filename);
 const tessdataPath = path.resolve(__dirname, "../../tessdata");
 const trainedDataPath = path.join(tessdataPath, "eng.traineddata");
 
-// Limit workers to 2
-const WORKER_COUNT = Math.min(2, os.cpus().length);
-const BATCH_SIZE = 2;
+// Limit workers
+const WORKER_COUNT = 1;
+const BATCH_SIZE = 1;
 
 //Initialize tesseract workers
 export async function initWorkers() {
@@ -51,13 +51,17 @@ export async function initWorkers() {
 
 //Preprocess image
 async function preprocessImage(buffer) {
-  if (buffer.length < 500000) return buffer;
+  // */ For now, skip preprocessing to save time. Can be enabled later if needed. */
 
-  return sharp(buffer)
-    .resize({ width: 600, withoutEnlargement: true })
-    .grayscale()
-    .normalize()
-    .toBuffer();
+  // if (buffer.length < 500000) return buffer;
+
+  // return sharp(buffer)
+  //   .resize({ width: 600, withoutEnlargement: true })
+  //   .grayscale()
+  //   .normalize()
+  //   .toBuffer();
+
+  return buffer;
 }
 
 //Main function
@@ -95,7 +99,7 @@ export async function* extractTextFromPages(files = []) {
             "recognize",
             processedBuffer,
             {
-              user_defined_dpi: "200"
+              user_defined_dpi: "150"
             }
           );
 

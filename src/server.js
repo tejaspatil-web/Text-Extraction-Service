@@ -32,11 +32,17 @@ app.get("/health", (req, res) => {
 
 // Start server after initializing OCR workers
 async function startServer() {
-  await initWorkers();
+  try {
+    await initWorkers();
+    console.log("OCR initialized");
 
-  app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-  });
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+
+  } catch (err) {
+    console.error("Failed to init OCR:", err);
+  }
 }
 
 startServer();
