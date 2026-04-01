@@ -37,7 +37,9 @@ export async function initWorkers() {
     });
 
     await worker.setParameters({
-      tessedit_pageseg_mode: 6
+      tessedit_pageseg_mode: 3,
+      tessedit_ocr_engine_mode: 1,
+      preserve_interword_spaces: "1"
     });
 
     scheduler.addWorker(worker);
@@ -51,17 +53,13 @@ export async function initWorkers() {
 async function preprocessImage(buffer) {
   if (buffer.length < 500000) return buffer;
 
-  // */ For now, skip preprocessing to save time. Can be enabled later if needed. */
-  // return sharp(buffer)
-  //   .resize({ width: 600, withoutEnlargement: true })
-  //   .grayscale()
-  //   .normalize()
-  //   .toBuffer();
-
   return await sharp(buffer)
-  .resize({ width: 400 })
-  .grayscale()
-  .toBuffer();
+    .resize({ width: 1000, withoutEnlargement: true }) //prevents upscaling
+    .grayscale()
+    .normalize()    //improves contrast
+    .sharpen()      //makes text edges clearer
+    .threshold(150) //converts to clean black & white
+    .toBuffer();
 }
 
 //Main function
@@ -103,7 +101,7 @@ export async function* extractTextFromPages(files = []) {
             "recognize",
             processedBuffer,
             {
-              user_defined_dpi: "150"
+              user_defined_dpi: "300"
             }
           );
 
